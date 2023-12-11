@@ -1,13 +1,11 @@
 package ru.geekbrains.lesson1.ChatClient;
 
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.io.*;
 import java.net.Socket;
-import javax.swing.*;
 
 public class ChatClient {
     private JFrame frame;
@@ -31,75 +29,51 @@ public class ChatClient {
     }
 
     public void initializeUI() {
-        frame = new JFrame("Chat Client");
-        frame.setSize(400, 300);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLayout(new BorderLayout());
+        // Введите данные для подключения
+        JTextField serverField = new JTextField();
+        JTextField usernameField = new JTextField();
+        Object[] message = {
+                "Server address:", serverField,
+                "Username:", usernameField
+        };
+        int option = JOptionPane.showConfirmDialog(null, message, "Enter connection details", JOptionPane.OK_CANCEL_OPTION);
+        if (option == JOptionPane.OK_OPTION) {
+            serverAddress = serverField.getText();
+            username = usernameField.getText();
 
-        JPanel inputPanel = new JPanel();
-        messageField = new JTextField();
-        sendButton = new JButton("Send");
+            frame = new JFrame("Chat Client");
+            frame.setSize(400, 300);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setLayout(new BorderLayout());
 
-        sendButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                sendMessage();
-            }
-        });
+            JPanel inputPanel = new JPanel();
+            messageField = new JTextField();
+            sendButton = new JButton("Send");
 
-        messageField.addKeyListener(new KeyListener() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-            }
-
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+            sendButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
                     sendMessage();
                 }
-            }
+            });
 
-            @Override
-            public void keyReleased(KeyEvent e) {
-            }
-        });
+            inputPanel.setLayout(new BorderLayout());
+            inputPanel.add(messageField, BorderLayout.CENTER);
+            inputPanel.add(sendButton, BorderLayout.EAST);
 
-        inputPanel.setLayout(new BorderLayout());
-        inputPanel.add(messageField, BorderLayout.CENTER);
-        inputPanel.add(sendButton, BorderLayout.EAST);
+            chatArea = new JTextArea();
+            chatArea.setEditable(false);
 
-        chatArea = new JTextArea();
-        chatArea.setEditable(false);
+            frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
+            frame.add(inputPanel, BorderLayout.SOUTH);
 
-        frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
-        frame.add(inputPanel, BorderLayout.SOUTH);
+            frame.setVisible(true);
 
-        // Добавляем поля ввода адреса сервера и порта
-        JPanel connectionPanel = new JPanel();
-        JTextField addressField = new JTextField();
-        JTextField portField = new JTextField();
-        JLabel addressLabel = new JLabel("Server Address:");
-        JLabel portLabel = new JLabel("Port:");
-
-        connectionPanel.setLayout(new GridLayout(2, 2));
-        connectionPanel.add(addressLabel);
-        connectionPanel.add(addressField);
-        connectionPanel.add(portLabel);
-        connectionPanel.add(portField);
-
-        JButton loginButton = new JButton("Login");
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                serverAddress = addressField.getText();
-                connectToServer();
-            }
-        });
-
-        frame.add(connectionPanel, BorderLayout.NORTH);
-        frame.add(loginButton, BorderLayout.NORTH);
-
-        frame.setVisible(true);
+            // Подключение к серверу
+            connectToServer();
+        } else {
+            System.exit(0); // Если пользователь нажал "Cancel", завершаем программу
+        }
     }
 
     private void connectToServer() {
@@ -107,6 +81,11 @@ public class ChatClient {
             socket = new Socket(serverAddress, 12345);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+
+            // Отправляем имя пользователя серверу при подключении
+            writer.write(username);
+            writer.newLine();
+            writer.flush();
 
             new Thread(new Runnable() {
                 @Override
@@ -122,9 +101,10 @@ public class ChatClient {
                     }
                 }
             }).start();
+
+            loadChatHistory(); // Вызовите loadChatHistory() после подключения к серверу
         } catch (IOException e) {
             e.printStackTrace();
-            appendMessage("Connection failed!");
         }
     }
 

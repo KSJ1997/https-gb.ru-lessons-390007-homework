@@ -30,8 +30,8 @@ public class ChatServer {
         statusTextArea = new JTextArea();
         statusTextArea.setEditable(false);
 
-        JButton startButton = new JButton("Start Server");
-        JButton stopButton = new JButton("Stop Server");
+        JButton startButton = new JButton("Start");
+        JButton stopButton = new JButton("Stop");
 
         startButton.addActionListener(new ActionListener() {
             @Override
@@ -108,6 +108,7 @@ public class ChatServer {
         private BufferedReader reader;
         private PrintWriter writer;
         private ChatServer chatServer;
+        private String username;
 
         public ClientHandler(ChatServer chatServer, Socket socket) {
             this.chatServer = chatServer;
@@ -116,6 +117,8 @@ public class ChatServer {
             try {
                 reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 writer = new PrintWriter(socket.getOutputStream(), true);
+                username = reader.readLine();
+                updateStatus(username + " joined the chat!");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -126,7 +129,7 @@ public class ChatServer {
             try {
                 String message;
                 while ((message = reader.readLine()) != null) {
-                    chatServer.broadcastMessage(message, this);
+                    chatServer.broadcastMessage(username + ": " + message, this);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -154,6 +157,10 @@ public class ChatServer {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+
+        private void updateStatus(String message) {
+            chatServer.updateStatus(message);
         }
     }
 }

@@ -1,44 +1,52 @@
-package ru.geekbrains.lesson1;
+package ru.geekbrains.lesson1.ChatClient;
 
-import java.net.Socket;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.*;
+import java.net.Socket;
+import javax.swing.*;
 
 public class ChatClient {
     private JFrame frame;
     private JTextField messageField;
     private JTextArea chatArea;
     private JButton sendButton;
-
     private Socket socket;
     private BufferedReader reader;
     private BufferedWriter writer;
-
     private String username;
     private String serverAddress;
     private static final String HISTORY_FILE_PATH = "chat_history.txt";
 
-    public ChatClient(String username, String serverAddress) {
-        this.username = username;
-        this.serverAddress = serverAddress;
-
-        initializeUI();
-        connectToServer();
-        loadChatHistory();
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new ChatClient().initializeUI();
+            }
+        });
     }
 
-    private void initializeUI() {
+    public void initializeUI() {
         frame = new JFrame("Chat Client");
         frame.setSize(400, 300);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
+        JPanel inputPanel = new JPanel();
         messageField = new JTextField();
+        sendButton = new JButton("Send");
+
+        sendButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                sendMessage();
+            }
+        });
+
         messageField.addKeyListener(new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {
@@ -56,20 +64,40 @@ public class ChatClient {
             }
         });
 
+        inputPanel.setLayout(new BorderLayout());
+        inputPanel.add(messageField, BorderLayout.CENTER);
+        inputPanel.add(sendButton, BorderLayout.EAST);
+
         chatArea = new JTextArea();
         chatArea.setEditable(false);
 
-        sendButton = new JButton("Send");
-        sendButton.addActionListener(new ActionListener() {
+        frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
+        frame.add(inputPanel, BorderLayout.SOUTH);
+
+        // Добавляем поля ввода адреса сервера и порта
+        JPanel connectionPanel = new JPanel();
+        JTextField addressField = new JTextField();
+        JTextField portField = new JTextField();
+        JLabel addressLabel = new JLabel("Server Address:");
+        JLabel portLabel = new JLabel("Port:");
+
+        connectionPanel.setLayout(new GridLayout(2, 2));
+        connectionPanel.add(addressLabel);
+        connectionPanel.add(addressField);
+        connectionPanel.add(portLabel);
+        connectionPanel.add(portField);
+
+        JButton loginButton = new JButton("Login");
+        loginButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                sendMessage();
+                serverAddress = addressField.getText();
+                connectToServer();
             }
         });
 
-        frame.add(messageField, BorderLayout.NORTH);
-        frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
-        frame.add(sendButton, BorderLayout.SOUTH);
+        frame.add(connectionPanel, BorderLayout.NORTH);
+        frame.add(loginButton, BorderLayout.NORTH);
 
         frame.setVisible(true);
     }
@@ -96,6 +124,7 @@ public class ChatClient {
             }).start();
         } catch (IOException e) {
             e.printStackTrace();
+            appendMessage("Connection failed!");
         }
     }
 
@@ -140,17 +169,5 @@ public class ChatClient {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static void main(String[] args) {
-        String username = JOptionPane.showInputDialog("Enter your username:");
-        String serverAddress = JOptionPane.showInputDialog("Enter server address:");
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new ChatClient(username, serverAddress);
-            }
-        });
     }
 }

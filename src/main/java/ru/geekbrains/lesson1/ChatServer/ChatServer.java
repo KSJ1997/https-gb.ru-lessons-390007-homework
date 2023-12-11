@@ -1,29 +1,69 @@
-package ru.geekbrains.lesson1;
+package ru.geekbrains.lesson1.ChatServer;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.*;
 
 public class ChatServer {
     private ServerSocket serverSocket;
     private List<ClientHandler> clients;
+    private JFrame frame;
+    private JTextArea statusTextArea;
 
     public static void main(String[] args) {
         ChatServer chatServer = new ChatServer();
+        chatServer.initializeUI();
         chatServer.start();
+    }
+
+    public void initializeUI() {
+        frame = new JFrame("Chat Server");
+        frame.setSize(400, 300);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        statusTextArea = new JTextArea();
+        statusTextArea.setEditable(false);
+
+        JButton startButton = new JButton("Start Server");
+        JButton stopButton = new JButton("Stop Server");
+
+        startButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                start();
+            }
+        });
+
+        stopButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                closeServer();
+            }
+        });
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(startButton);
+        buttonPanel.add(stopButton);
+
+        frame.setLayout(new BorderLayout());
+        frame.add(new JScrollPane(statusTextArea), BorderLayout.CENTER);
+        frame.add(buttonPanel, BorderLayout.SOUTH);
+
+        frame.setVisible(true);
     }
 
     public void start() {
         clients = new ArrayList<>();
 
-        try (ServerSocket serverSocket = new ServerSocket(12345)) {
-            this.serverSocket = serverSocket;
+        try {
+            serverSocket = new ServerSocket(12345);
+            updateStatus("Server started!");
 
             while (true) {
                 Socket socket = serverSocket.accept();
@@ -33,8 +73,6 @@ public class ChatServer {
             }
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            closeServer();
         }
     }
 
@@ -54,10 +92,15 @@ public class ChatServer {
         try {
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
+                updateStatus("Server stopped!");
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void updateStatus(String message) {
+        statusTextArea.append(message + "\n");
     }
 
     private static class ClientHandler implements Runnable {
@@ -72,7 +115,7 @@ public class ChatServer {
 
             try {
                 reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
+                writer = new PrintWriter(socket.getOutputStream(), true);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -106,8 +149,8 @@ public class ChatServer {
                 }
                 if (socket != null && !socket.isClosed()) {
                     socket.close();
+                    chatServer.removeClient(this);
                 }
-                chatServer.removeClient(this);
             } catch (IOException e) {
                 e.printStackTrace();
             }

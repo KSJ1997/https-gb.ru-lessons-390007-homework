@@ -29,7 +29,6 @@ public class ChatClient {
     }
 
     public void initializeUI() {
-        // Введите данные для подключения
         JTextField serverField = new JTextField();
         JTextField usernameField = new JTextField();
         Object[] message = {
@@ -41,7 +40,7 @@ public class ChatClient {
             serverAddress = serverField.getText();
             username = usernameField.getText();
 
-            frame = new JFrame("Chat Client: " + username);  // Добавляем имя пользователя в заголовок
+            frame = new JFrame("Chat Client: " + username);
             frame.setSize(500, 400);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setLayout(new BorderLayout());
@@ -49,7 +48,6 @@ public class ChatClient {
             JPanel inputPanel = new JPanel();
             messageField = new JTextField();
             sendButton = new JButton("Send");
-
             sendButton.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
@@ -66,13 +64,11 @@ public class ChatClient {
 
             frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
             frame.add(inputPanel, BorderLayout.SOUTH);
-
             frame.setVisible(true);
 
-            // Подключение к серверу
             connectToServer();
         } else {
-            System.exit(0); // Если пользователь нажал "Cancel", завершаем программу
+            System.exit(0);
         }
     }
 
@@ -81,8 +77,7 @@ public class ChatClient {
             socket = new Socket(serverAddress, 12345);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-
-            // Отправляем имя пользователя серверу при подключении
+            
             writer.write(username);
             writer.newLine();
             writer.flush();
@@ -102,7 +97,7 @@ public class ChatClient {
                 }
             }).start();
 
-            loadChatHistory(); // Вызовите loadChatHistory() после подключения к серверу
+            loadChatHistory();
         } catch (IOException e) {
             e.printStackTrace();
         }

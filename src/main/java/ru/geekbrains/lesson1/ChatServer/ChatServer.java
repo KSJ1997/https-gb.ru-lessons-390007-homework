@@ -130,7 +130,7 @@ public class ChatServer {
                 String message;
                 while ((message = reader.readLine()) != null) {
                     String fullMessage = message;
-                    chatServer.updateStatus(fullMessage); // Отображаем сообщение в окне чата сервера
+                    chatServer.updateStatus(fullMessage);
                     chatServer.broadcastMessage(fullMessage, this);
                 }
             } catch (IOException e) {

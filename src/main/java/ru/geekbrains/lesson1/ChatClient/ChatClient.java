@@ -41,8 +41,8 @@ public class ChatClient {
             serverAddress = serverField.getText();
             username = usernameField.getText();
 
-            frame = new JFrame("Chat Client");
-            frame.setSize(400, 300);
+            frame = new JFrame("Chat Client: " + username);  // Добавляем имя пользователя в заголовок
+            frame.setSize(500, 400);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setLayout(new BorderLayout());
 

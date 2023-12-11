@@ -24,7 +24,7 @@ public class ChatServer {
 
     public void initializeUI() {
         frame = new JFrame("Chat Server");
-        frame.setSize(400, 300);
+        frame.setSize(500, 400);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         statusTextArea = new JTextArea();
@@ -60,14 +60,15 @@ public class ChatServer {
 
     public void start() {
         clients = new ArrayList<>();
-
+    
         try {
             serverSocket = new ServerSocket(12345);
             updateStatus("Server started!");
-
+    
             while (true) {
                 Socket socket = serverSocket.accept();
-                ClientHandler clientHandler = new ClientHandler(this, socket);
+                String username = new BufferedReader(new InputStreamReader(socket.getInputStream())).readLine();
+                ClientHandler clientHandler = new ClientHandler(this, socket, username);
                 clients.add(clientHandler);
                 new Thread(clientHandler).start();
             }
@@ -108,16 +109,15 @@ public class ChatServer {
         private BufferedReader reader;
         private PrintWriter writer;
         private ChatServer chatServer;
-        private String username;
 
-        public ClientHandler(ChatServer chatServer, Socket socket) {
+        public ClientHandler(ChatServer chatServer, Socket socket, String username) {
             this.chatServer = chatServer;
             this.socket = socket;
 
+        
             try {
                 reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 writer = new PrintWriter(socket.getOutputStream(), true);
-                username = reader.readLine();
                 updateStatus(username + " joined the chat!");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -129,7 +129,9 @@ public class ChatServer {
             try {
                 String message;
                 while ((message = reader.readLine()) != null) {
-                    chatServer.broadcastMessage(username + ": " + message, this);
+                    String fullMessage = message;
+                    chatServer.updateStatus(fullMessage); // Отображаем сообщение в окне чата сервера
+                    chatServer.broadcastMessage(fullMessage, this);
                 }
             } catch (IOException e) {
                 e.printStackTrace();

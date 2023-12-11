@@ -1,48 +1,65 @@
 package ru.geekbrains.lesson1;
 
+import java.net.Socket;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.*;
-import java.net.Socket;
 
 public class ChatClient {
-
-    private static final String SERVER_ADDRESS = "127.0.0.1"; // Адрес сервера
-    private static final int SERVER_PORT = 12345; // Порт сервера
+    private JFrame frame;
+    private JTextField messageField;
+    private JTextArea chatArea;
+    private JButton sendButton;
 
     private Socket socket;
-    private BufferedReader serverReader;
-    private BufferedWriter serverWriter;
+    private BufferedReader reader;
+    private BufferedWriter writer;
 
-    private JFrame frame;
-    private JTextArea chatArea;
-    private JTextField messageField;
+    private String username;
+    private String serverAddress;
+    private static final String HISTORY_FILE_PATH = "chat_history.txt";
 
-    public ChatClient() {
-        initUI();
+    public ChatClient(String username, String serverAddress) {
+        this.username = username;
+        this.serverAddress = serverAddress;
+
+        initializeUI();
         connectToServer();
+        loadChatHistory();
     }
 
-    private void initUI() {
+    private void initializeUI() {
         frame = new JFrame("Chat Client");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(400, 300);
-
-        chatArea = new JTextArea();
-        chatArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(chatArea);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new BorderLayout());
 
         messageField = new JTextField();
-        messageField.addActionListener(new ActionListener() {
+        messageField.addKeyListener(new KeyListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                sendMessage();
+            public void keyTyped(KeyEvent e) {
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    sendMessage();
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
             }
         });
 
-        JButton sendButton = new JButton("Send");
+        chatArea = new JTextArea();
+        chatArea.setEditable(false);
+
+        sendButton = new JButton("Send");
         sendButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -50,28 +67,27 @@ public class ChatClient {
             }
         });
 
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(messageField, BorderLayout.SOUTH);
-        panel.add(sendButton, BorderLayout.EAST);
+        frame.add(messageField, BorderLayout.NORTH);
+        frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
+        frame.add(sendButton, BorderLayout.SOUTH);
 
-        frame.add(panel);
         frame.setVisible(true);
     }
 
     private void connectToServer() {
         try {
-            socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
-            serverReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            serverWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            socket = new Socket(serverAddress, 12345);
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        String message;
-                        while ((message = serverReader.readLine()) != null) {
-                            appendMessage(message);
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            appendMessage(line);
+                            saveChatHistory(line);
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -84,11 +100,16 @@ public class ChatClient {
     }
 
     private void sendMessage() {
-        String message = messageField.getText();
+        String message = messageField.getText().trim();
         if (!message.isEmpty()) {
             try {
-                serverWriter.write(message + "\n");
-                serverWriter.flush();
+                writer.write(username + ": " + message);
+                writer.newLine();
+                writer.flush();
+
+                appendMessage(username + ": " + message);
+                saveChatHistory(username + ": " + message);
+
                 messageField.setText("");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -97,19 +118,38 @@ public class ChatClient {
     }
 
     private void appendMessage(String message) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                chatArea.append(message + "\n");
+        chatArea.append(message + "\n");
+    }
+
+    private void loadChatHistory() {
+        try (BufferedReader historyReader = new BufferedReader(new FileReader(HISTORY_FILE_PATH))) {
+            String line;
+            while ((line = historyReader.readLine()) != null) {
+                appendMessage(line);
             }
-        });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveChatHistory(String message) {
+        try (BufferedWriter historyWriter = new BufferedWriter(new FileWriter(HISTORY_FILE_PATH, true))) {
+            historyWriter.write(message);
+            historyWriter.newLine();
+            historyWriter.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
+        String username = JOptionPane.showInputDialog("Enter your username:");
+        String serverAddress = JOptionPane.showInputDialog("Enter server address:");
+
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                new ChatClient();
+                new ChatClient(username, serverAddress);
             }
         });
     }

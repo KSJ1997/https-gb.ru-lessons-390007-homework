@@ -1,44 +1,78 @@
 package ru.geekbrains.lesson1;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ChatServer {
+    private ServerSocket serverSocket;
+    private List<ClientHandler> clients;
 
-    private static final int SERVER_PORT = 12345; // Порт сервера
+    public static void main(String[] args) {
+        ChatServer chatServer = new ChatServer();
+        chatServer.start();
+    }
 
-    private List<ConnectionHandler> clients = new ArrayList<>();
+    public void start() {
+        clients = new ArrayList<>();
 
-    public ChatServer() {
-        try {
-            ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
-            System.out.println("Server is running on port " + SERVER_PORT);
+        try (ServerSocket serverSocket = new ServerSocket(12345)) {
+            this.serverSocket = serverSocket;
 
             while (true) {
-                Socket clientSocket = serverSocket.accept();
-                ConnectionHandler handler = new ConnectionHandler(clientSocket);
-                clients.add(handler);
-                new Thread(handler).start();
+                Socket socket = serverSocket.accept();
+                ClientHandler clientHandler = new ClientHandler(this, socket);
+                clients.add(clientHandler);
+                new Thread(clientHandler).start();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            closeServer();
+        }
+    }
+
+    public void broadcastMessage(String message, ClientHandler sender) {
+        for (ClientHandler client : clients) {
+            if (client != sender) {
+                client.sendMessage(message);
+            }
+        }
+    }
+
+    public void removeClient(ClientHandler client) {
+        clients.remove(client);
+    }
+
+    private void closeServer() {
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private class ConnectionHandler implements Runnable {
+    private static class ClientHandler implements Runnable {
+        private Socket socket;
+        private BufferedReader reader;
+        private PrintWriter writer;
+        private ChatServer chatServer;
 
-        private Socket clientSocket;
-        private BufferedReader clientReader;
-        private BufferedWriter clientWriter;
+        public ClientHandler(ChatServer chatServer, Socket socket) {
+            this.chatServer = chatServer;
+            this.socket = socket;
 
-        public ConnectionHandler(Socket socket) {
-            this.clientSocket = socket;
             try {
-                clientReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                clientWriter = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+                reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -47,44 +81,36 @@ public class ChatServer {
         @Override
         public void run() {
             try {
-                while (true) {
-                    String message = clientReader.readLine();
-                    if (message == null) {
-                        break;
-                    }
-                    broadcastMessage(message);
+                String message;
+                while ((message = reader.readLine()) != null) {
+                    chatServer.broadcastMessage(message, this);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                clients.remove(this);
-                closeConnection();
+                closeClient();
             }
         }
 
-        private void broadcastMessage(String message) {
-            for (ConnectionHandler handler : clients) {
-                try {
-                    handler.clientWriter.write(message + "\n");
-                    handler.clientWriter.flush();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+        public void sendMessage(String message) {
+            writer.println(message);
         }
 
-        private void closeConnection() {
+        private void closeClient() {
             try {
-                clientReader.close();
-                clientWriter.close();
-                clientSocket.close();
+                if (reader != null) {
+                    reader.close();
+                }
+                if (writer != null) {
+                    writer.close();
+                }
+                if (socket != null && !socket.isClosed()) {
+                    socket.close();
+                }
+                chatServer.removeClient(this);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-    }
-
-    public static void main(String[] args) {
-        new ChatServer();
     }
 }

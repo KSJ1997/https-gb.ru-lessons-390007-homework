@@ -1,5 +1,8 @@
-package ru.geekbrains.lesson1.ChatServer;
+package ru.geekbrains.lesson1.chatserver;
 
+import ru.geekbrains.lesson1.chatserver.handlers.ClientHandler;
+
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -8,21 +11,19 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.*;
 
 public class ChatServer {
-    private ServerSocket serverSocket;
-    private List<ClientHandler> clients;
-    private JFrame frame;
-    private JTextArea statusTextArea;
+    private static ServerSocket serverSocket;
+    private static List<ClientHandler> clients;
+    private static JFrame frame;
+    private static JTextArea statusTextArea;
 
     public static void main(String[] args) {
-        ChatServer chatServer = new ChatServer();
-        chatServer.initializeUI();
-        chatServer.start();
+        initializeUI();
+        start();
     }
 
-    public void initializeUI() {
+    public static void initializeUI() {
         frame = new JFrame("Chat Server");
         frame.setSize(500, 400);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -58,17 +59,17 @@ public class ChatServer {
         frame.setVisible(true);
     }
 
-    public void start() {
+    public static void start() {
         clients = new ArrayList<>();
-    
+
         try {
             serverSocket = new ServerSocket(12345);
             updateStatus("Server started!");
-    
+
             while (true) {
                 Socket socket = serverSocket.accept();
                 String username = new BufferedReader(new InputStreamReader(socket.getInputStream())).readLine();
-                ClientHandler clientHandler = new ClientHandler(this, socket, username);
+                ClientHandler clientHandler = new ClientHandler(socket, username);
                 clients.add(clientHandler);
                 new Thread(clientHandler).start();
             }
@@ -77,7 +78,7 @@ public class ChatServer {
         }
     }
 
-    public void broadcastMessage(String message, ClientHandler sender) {
+    public static void broadcastMessage(String message, ClientHandler sender) {
         for (ClientHandler client : clients) {
             if (client != sender) {
                 client.sendMessage(message);
@@ -85,11 +86,15 @@ public class ChatServer {
         }
     }
 
-    public void removeClient(ClientHandler client) {
+    public static void removeClient(ClientHandler client) {
         clients.remove(client);
     }
 
-    private void closeServer() {
+    public static void updateStatus(String message) {
+        statusTextArea.append(message + "\n");
+    }
+
+    private static void closeServer() {
         try {
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
@@ -97,72 +102,6 @@ public class ChatServer {
             }
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    private void updateStatus(String message) {
-        statusTextArea.append(message + "\n");
-    }
-
-    private static class ClientHandler implements Runnable {
-        private Socket socket;
-        private BufferedReader reader;
-        private PrintWriter writer;
-        private ChatServer chatServer;
-
-        public ClientHandler(ChatServer chatServer, Socket socket, String username) {
-            this.chatServer = chatServer;
-            this.socket = socket;
-
-        
-            try {
-                reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                writer = new PrintWriter(socket.getOutputStream(), true);
-                updateStatus(username + " joined the chat!");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        @Override
-        public void run() {
-            try {
-                String message;
-                while ((message = reader.readLine()) != null) {
-                    String fullMessage = message;
-                    chatServer.updateStatus(fullMessage);
-                    chatServer.broadcastMessage(fullMessage, this);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                closeClient();
-            }
-        }
-
-        public void sendMessage(String message) {
-            writer.println(message);
-        }
-
-        private void closeClient() {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-                if (writer != null) {
-                    writer.close();
-                }
-                if (socket != null && !socket.isClosed()) {
-                    socket.close();
-                    chatServer.removeClient(this);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        private void updateStatus(String message) {
-            chatServer.updateStatus(message);
         }
     }
 }

@@ -69,7 +69,7 @@ public class ChatServer {
             while (true) {
                 Socket socket = serverSocket.accept();
                 String username = new BufferedReader(new InputStreamReader(socket.getInputStream())).readLine();
-                ClientHandler clientHandler = new ClientHandler(socket, username);
+                ClientHandler clientHandler = new ClientHandlerImpl(socket, username);
                 clients.add(clientHandler);
                 new Thread(clientHandler).start();
             }
